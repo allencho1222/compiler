@@ -32,7 +32,7 @@ void yyerror(char *s)
 
 %start program
 
-&nonassoc EQ NEQ LT LE GT GE
+%nonassoc EQ NEQ LT LE GT GE
 %left PLUS MINUS
 %left TIMES DIVIDE
 %left UMINUS
@@ -42,7 +42,7 @@ program:	exp
 
 exp:	lvalue
 	|	NIL
-	|
+	|   LPAREN RPAREN
 	|	INT	
 	|	STRING	
 	|	MINUS exp %prec UMINUS
@@ -58,23 +58,28 @@ exp:	lvalue
 	|	exp GE exp
 	|	exp AND exp
 	|	exp OR exp
-	/* record creation */
+	|	typeid LBRACE rec RBRACE
 	|	typeid LBRACK exp RBRACK OF exp
 	|	lvalue ASSIGN exp
-	|	IF exp THEN exp ELSE exep
+	|	IF exp THEN exp ELSE exp
 	|	IF exp THEN exp
 	|	WHILE exp DO exp
 	|	FOR ID ASSIGN exp TO exp DO exp
 	|	BREAK
 	|	LET decs IN expseq END
-	|
 	|	LPAREN exp RPAREN
 
 
 expseq:	exp SEMICOLON expseq
 		|	exp
 
+rec:	ID EQ exp recList
 
+recList:	COMMA rec
+		|
+
+
+recList:	ID EQ exp
 decs:	dec decs
 	|	
 
@@ -94,7 +99,7 @@ typeid:	ID
 tyfields:	
 		|	ID COLON typeid tyfieldsList
 
-tyfieldsList:	COMMA ID COLON typeid tyfieldsList
+tyfieldsList:	COMMA tyfields
 			|
 
 
