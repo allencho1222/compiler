@@ -1,4 +1,4 @@
-# include "stdio.h"
+#include "stdio.h"
 # define U(x) ((x)&0377)
 # define NLSTATE yyprevious=YYNEWLINE
 # define BEGIN yybgin = yysvec + 1 +
@@ -17,7 +17,8 @@ int yyleng; extern unsigned char yytext[];
 int yymorfg;
 extern unsigned char *yysptr, yysbuf[];
 int yytchar;
-FILE *yyin = {stdin}, *yyout = {stdout};
+/* FILE *yyin = {stdin}, *yyout = {stdout}; */ /* GIVES COMPILER ERROR */
+FILE *yyin, *yyout;                      /* WORKS, BUT REMAINING QUESTION: where and how to initialize yyin and yyout ??? */
 extern int yylineno;
 struct yysvf { 
 	struct yywork *yystoff;
@@ -28,8 +29,6 @@ extern struct yysvf yysvec[], *yybgin;
 /* Copyright (c) 1997 Andrew W. Appel.  Licensed software: see LICENSE file */
 #include <string.h>
 #include "util.h"
-#include "symbol.h"
-#include "absyn.h"
 #include "y.tab.h"
 #include "errormsg.h"
 
@@ -76,6 +75,8 @@ void adjust(void)
 # define YYNEWLINE 10
 yylex(){
 int nstr; extern int yyprevious;
+/* QUESTION: is this the correct place and method to initialize stdin and stdout? */
+yyin = stdin; yyout = stdout;
 while((nstr = yylook()) >= 0)
 yyfussy: switch(nstr){
 case 0:
