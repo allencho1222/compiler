@@ -22,7 +22,7 @@ void yyerror(char *s)
 	A_var var;
 	A_exp exp;
 	A_dec dec;
-	A_fundec fundec; 
+	A_fundec a_fundec; 
 	A_ty ty;
 	A_field field;
 	A_fieldList fieldList;
@@ -32,8 +32,6 @@ void yyerror(char *s)
 	A_fundecList fundecList;
 	A_expList expList;
 	A_efieldList efieldList;
-	
-	/* et cetera */
 }
 
 %token <sval> ID STRING
@@ -53,10 +51,10 @@ void yyerror(char *s)
 %type <fieldList> tyfieldsList tyfields
 %type <ty> ty
 %type <nametyList> typeList tydec
-%type <dec> fundec dec
-%type <decList> decs
-%type <fundec> function
-%type <fundecList> functionList
+%type <dec> dec
+%type <decList> decs 
+%type <a_fundec> function
+%type <fundecList> functionList fundec
 %type <efieldList> recList recList2
 %type <var>	lvalue
 /* et cetera */
@@ -149,10 +147,9 @@ tyfieldsList:	COMMA ID COLON ID tyfieldsList	{$$ = A_FieldList (A_Field (EM_tokP
 
 
 fundec:	function functionList			{$$ = A_FundecList ($1, $2);}
-
 functionList: function functionList		{$$ = A_FundecList ($1, $2);}
 		|							{$$ = NULL;}
 
-function:	FUNCTION ID LPAREN tyfields RPAREN EQ exp				{$$ = Fundec (EM_tokPos, S_Symbol ($2), $4, NULL, $7);}
-		|	FUNCTION ID LPAREN tyfields RPAREN COLON ID EQ exp	{$$ = Fundec (EM_tokPos, S_Symbol ($2), $4, $7, $9);}
+function:	FUNCTION ID LPAREN tyfields RPAREN EQ exp				{$$ = A_Fundec (EM_tokPos, S_Symbol ($2), $4, NULL, $7);}
+		|	FUNCTION ID LPAREN tyfields RPAREN COLON ID EQ exp	{$$ = A_Fundec (EM_tokPos, S_Symbol ($2), $4, S_Symbol ($7), $9);}
 

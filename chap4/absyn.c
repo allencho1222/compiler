@@ -141,7 +141,7 @@ A_exp A_ForExp(A_pos pos, S_symbol var, A_exp lo, A_exp hi, A_exp body)
  return p;
 }
 
-A_exp A_BreakExp(A_pos pos
+A_exp A_BreakExp(A_pos pos)
 {A_exp p = checked_malloc(sizeof(*p));
  p->kind=A_breakExp;
  p->pos=pos;

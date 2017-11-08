@@ -146,7 +146,7 @@ typedef union YYSTYPE
 	A_var var;
 	A_exp exp;
 	A_dec dec;
-	A_fundec fundec; 
+	A_fundec a_fundec; 
 	A_ty ty;
 	A_field field;
 	A_fieldList fieldList;
@@ -156,11 +156,9 @@ typedef union YYSTYPE
 	A_fundecList fundecList;
 	A_expList expList;
 	A_efieldList efieldList;
-	
-	/* et cetera */
 }
 /* Line 1529 of yacc.c.  */
-#line 164 "y.tab.h"
+#line 162 "y.tab.h"
 	YYSTYPE;
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1
