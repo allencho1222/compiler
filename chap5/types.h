@@ -15,7 +15,7 @@ struct Ty_ty_ {
 		       Ty_name, Ty_void} kind;
 	union {
 		Ty_fieldList record;
-		Ty_ty array;
+		Ty_ty array;	// type of array elements
 		struct {
 			S_symbol sym; 
 			Ty_ty ty;

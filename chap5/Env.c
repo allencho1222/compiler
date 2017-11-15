@@ -4,7 +4,7 @@ S_table E_base_tenv (void) {
 	S_table type_table = S_empty ();
 
 	S_enter (type_table, S_Symbol ("int"), Ty_Int ());
-	S_enter (type_table, S_Symbol ("string", Ty_String ());
+	S_enter (type_table, S_Symbol ("string"), Ty_String ());
 
 	return type_table;
 }

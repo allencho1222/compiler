@@ -8,6 +8,16 @@ struct expty expTy (Tr_exp exp, Ty_ty ty) {
 	return e;
 }
 
+Ty_ty actual_ty (Ty_ty ty) {
+	if (ty.kind == Ty_name) {
+		return actual_ty (ty->u.name.ty);
+	} else {
+		return ty;
+	}
+}
+
+
+
 struct expty transVar (S_table venv, S_table tenv, A_var v) {
 	switch (v->kind) {
 		case A_simpleVar :
@@ -34,7 +44,7 @@ struct expty transVar (S_table venv, S_table tenv, A_var v) {
 				}
 				EM_error (v->pos, "no corresponding field in record : %s", S_name (v->u.field.sym));
 			}
-			return expTy (NULL, TY_Record (NULL));
+			return expTy (NULL, Ty_Record (NULL));
 			break;
 		case A_subscriptVar :
 			struct expty e = transVar (venv, tenv, v->u.subscript.var);
@@ -84,7 +94,33 @@ struct expty transExp (S_table venv, S_table tenv, A_exp a) {
 			break;
 		case A_letExp :
 			struct expty exp;
+			A_decList d;
+			S_beginScope (venv);
+			S_beginScope (tenv);
+
+			for (d = a->u.let.decs; d != NULL; d = d->tail) {
+				transDec (venv, tenv, d->head);
+			exp = transExp (venv, tenv, a->u.let.body); 
+			S_endScope (tenv);
+			S_endScope (venv);
 			
+			return exp;
+			break;
+		case A_varExp :
+			return transVar (venv, tenv, a);
+			break;
+		case A_nilExp :
+			return expTy (NULL, Ty_Nil ());
+		case A_intExp :
+			return expTy (NULL, Ty_Int ())
+		case A_stringExp :
+			return expTy (NULL, Ty_String ());
+		case A_callExp :
+			E_enventry e = S_look (venv, a->u.call.func);
+			if (e != NULL && e->kind == E_funEntry) {
+				A_expList explist;
+				A_exp exp;
+				
 	}
 }
 
@@ -92,26 +128,57 @@ struct expty transExp (S_table venv, S_table tenv, A_exp a) {
 void transDec (S_table venv, S_table tenv, A_dec d) {
 	switch (d->kind) {
 		case A_typeDec :
-			S_enter (tenv, d->u.type->head.name, transTy (d->u.type->head->ty));
+			A_nametyList nametyList;
+			A_namety namety;
+			for (nametyList = d->u.type; nametyList != NULL; nametyList = nametyList->tail) {
+				A_namety namety = nametyList->head;
+				S_enter (tenv, namety->name, transTy (namety->ty));
+			}
 			break;
 		case A_functionDec :
-			A_fundec function = d->u.function->head;
-			Ty_ty resultTy = S_look (tenv, function->result);
-			Ty_tyList formalTy = makeFormalTyList (tenv, function->params);
+			A_fundecList fundecList;
+			A_fundec fundec;
 
-			S_enter (venv, f->name, E_FunEntry (formalTy, resultTy));
-			S_beginScope (venv);
-			{
-				A_fieldList l;
-				Ty_tyList t;
-				for (l = function->params, t = formalTy; l; l = l->tail, t = t->tail)
-					S_enter (venv, l->head->name, E_VarEntry (t->head));
+			for (fundecList = d->u.function; fundecList != NULL; fundecList = fundecList->tail) {
+				struct expty exp;
+				fundec = fundecList->head;
+				Ty_ty resultTy = (fundec->result != NULL) ? S_look (tenv, fundec->result) : Ty_void ();
+
+				if (resultTy == NULL) {
+					EM_error (fundec->pos, "result type is not declared before");
+				}
+				Ty_tyList formalTy = makeFormalTyList (tenv, fundec->params);
+
+				S_enter (venv, f->name, E_FunEntry (formalTy, resultTy));
+				S_beginScope (venv);
+				{
+					A_fieldList l;
+					Ty_tyList t;
+					for (l = fundec->params, t = formalTy; l != NULL; l = l->tail, t = t->tail)
+						S_enter (venv, l->head->name, E_VarEntry (t->head));
+				}
+				exp = transExp (venv, tenv, d->u.function->body);
+
+				if (!checkRetType (exp.ty, resultTy)) 
+					EM_error (fundec->pos, "return type does not match");
+
+				S_endScope (venv);
 			}
-			transExp (venv, tenv, d->u.function->body);
 			break;
 		case A_varDec :
 			struct expty e = transExp (venv, tenv, d->u.var.init);
-			S_enter (venv, d->u.var.var, E_VarEntry (e.ty));
+			// varTy will be NULl if it the type is not declared before or not declared by programmer
+			Ty_ty varTy = (d->u.var.typ != NULL) ? S_look (tenv, d->u.var.typ) : NULL;
+			if (d->u.var.typ != NULL) {
+				Ty_ty varTy = S_look (tenv, d->u.var.typ);
+				if (varTy != NULL && varTy->kind == Ty_record) {
+					S_enter (venv, d->u.var.var, E_varEntry (e.ty));
+				} else {
+					EM_error (d->pos, "NULL cannot be applied to non-record variable");
+				}
+			} else {
+				EM_error (d->pos, "NULL cannot be applied to non-record variable");
+			}
 			break;
 		default :
 	}
@@ -135,7 +202,7 @@ Ty_ty transTy (S_table tenv, A_ty ty) {
 			if (nameTy == NULL)
 				EM_error (ty->pos, "%s is not defined", S_name (ty->u.name));
 
-			return nameTy;
+			return Ty_Name (ty->u.name, nameTy);
 			break;
 		default :
 			EM_error (ty->pos, "unknown declaration");
@@ -144,20 +211,38 @@ Ty_ty transTy (S_table tenv, A_ty ty) {
 
 
 Ty_ty makeFieldTyList (S_table tenv, A_ty ty) {
-	struct Ty_fieldList tyfieldList = NULL;
-	struct A_fieldList fieldList = ty->u.record;
-	struct A_field field;
+	Ty_fieldList tyfieldList = NULL;
+	A_fieldList fieldList = ty->u.record;
+	A_field field;
 
-	for (field = fieldList->head; field != NULL; i field = fieldList->head->tail) {
+	for (fieldList = ty->u.record; fieldList != NULL; fieldList = fieldList->tail) {
+		A_field field = fieldList->head;
 		Ty_ty typeTy = S_look (tenv, field->typ);
 		if (typeTy == NULL) {
 			EM_error (field->pos, "%s is not defined", S_name (field->typ));
 		} else {
-			struct Ty_field tyfield = Ty_field (field->name, typeTy);
-			tyfieldList = Ty_FieldList (tyfield, NULL);
-			tyfieldList = tyfieldList->tail;
+			Ty_field tyfield = Ty_field (field->name, typeTy);
+			if (tyfieldList == NULL)
+				tyfieldList = Ty_FieldList (tyfield, NULL);
+			else {
+				tyfieldList->tail = Ty_FieldList (tyfield, NULL);
+				tyfieldList = tyfieldList->tail; 
+			}
 		}
 	}
 	return tyfieldList;
 }
+
+
+bool checkRetType (Ty_ty decTy, Ty_ty bodyTy) {
+	if (decTy->kind != bodyTy->kind) {
+		return false;
+	} else {
+		Ty_ty actual_decTy = actual_ty (decTy);
+		Ty_ty actual_bodyTy = actual_ty (bodyTy);
+
+		return actual_decTy == actual_bodyTy;
+	}
+}
+			
 				
