@@ -118,8 +118,25 @@ struct expty transExp (S_table venv, S_table tenv, A_exp a) {
 		case A_callExp :
 			E_enventry e = S_look (venv, a->u.call.func);
 			if (e != NULL && e->kind == E_funEntry) {
+				checkArgs (e->u.fun.formals, a->u.call.args);
 				A_expList explist;
-				A_exp exp;
+			} else {
+				EM_error (a->pos, "function type does not match");
+			}
+			break;
+		case A_recordExp :
+			E_enventry e = S_look (tenv, a->u.record.typ);
+			if (e != NULL && e->kind = E_varEntry) {
+				if (e->u.var.ty->kind != Ty_record) {
+					EM_error ("%s is not a record type", S_name (a->u.record.typ));
+				} else {
+					A_efieldList efieldlist = a->u.record.fields;
+					Ty_fieldList fieldlist = e->u.var.ty->u.record;
+					if (checkRecFields (efieldlist, fieldlist)) {
+						return expTy (NULL, Ty_Record (fieldlist));
+					
+				
+					
 				
 	}
 }
@@ -244,5 +261,27 @@ bool checkRetType (Ty_ty decTy, Ty_ty bodyTy) {
 		return actual_decTy == actual_bodyTy;
 	}
 }
-			
+
+bool checkArgs (Ty_tyList formals, A_expList explist) {
+	Ty_tyList tylist;;
+	A_expList explist;
+
+	for (tylist = formals, exp = explist; tylist != NULL && explist != NULL;
+		tylist = formals->tail, explist = explist->tail) {
+		Ty_ty funcTy = actual_ty (tylist->head);
+		A_exp exp = explist->head;
+		struct expty exp_ty = transVar (exp);
+		Ty_ty argsTy = actual_ty (exp_ty.ty);
+
+		if (funcTy->kind != argsTy->kind) {
+			EM_error (exp->pos, "function type does not match");
+		} else {
+			if (funcTy->kind == Ty_record) {
+				Ty_field field = funcTy->u.record
+}
 				
+				
+				
+				
+			
+
