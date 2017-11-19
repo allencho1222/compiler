@@ -128,16 +128,110 @@ struct expty transExp (S_table venv, S_table tenv, A_exp a) {
 			E_enventry e = S_look (tenv, a->u.record.typ);
 			if (e != NULL && e->kind = E_varEntry) {
 				if (e->u.var.ty->kind != Ty_record) {
-					EM_error ("%s is not a record type", S_name (a->u.record.typ));
+					EM_error (a->pos, "%s is not a record type", S_name (a->u.record.typ));
 				} else {
 					A_efieldList efieldlist = a->u.record.fields;
 					Ty_fieldList fieldlist = e->u.var.ty->u.record;
 					if (checkRecFields (efieldlist, fieldlist)) {
 						return expTy (NULL, Ty_Record (fieldlist));
-					
-				
-					
-				
+					} else {
+						EM_error (a->pos, "record does not match");
+						return expTy (NULL, Ty_Record (NULL));
+					}
+				}	
+			}
+			break;
+		case A_seqExp :			
+			A_expList explist = a->u.seq;
+			if (explist == NULL)
+				return expTy (NULL, Ty_void ());
+
+			while (explist->tail != NULL) {
+				transVar (venv, tenv, explist->head);
+				explist = explist->tail;
+			}
+			return transVar (venv, tenv, explist->head);
+			break;
+		case A_assignExp :
+			struct expty lvalue = transVar (venv, tenv, a->u.assign.var);
+			struct expty exp = transVar (venv, tenv, a->u.assign.exp);
+
+			if (!isTypeCorrect (lvalue.ty, exp.ty)) {
+					EM_error (a->pos, "Type does not match");
+			}
+			return expTy (NULL, Ty_void ());
+			break;
+		case A_ifExp :
+			struct expty ifExp = transVar (venv, tenv, a->u.iff.test);
+			struct expty thenExp = transVar (venv, tenv, a->u.iff.then);
+			if (ifExp.ty->kind != Ty_int) {
+				EM_error (a->u.iff.test->pos, "if statement has to be evaluated as INT type");
+			}
+
+			if (a->u.iff.elsee != NULL) {
+				struct expty elseExp = transVar (venv, tenv, a->u.iff.elsee);
+				if (thenExp.ty->kind != elseExp.ty->kind) {
+					EM_error (a->u.iff.then->pos, "then statement and else statement has to have same type");
+				}
+				return expTy (NULL, elseExp.ty);
+			}
+			
+			if (thenExp){}
+			break;
+		case A_whileExp :
+			struct expty testExp = transVar (venv, tenv, a->u.whilee.test);
+			struct expty bodyExp = transVar (venv, tenv, a->u.whilee.body);
+		
+			if (testExp.ty->kind != Ty_int) {
+				EM_error (a->u.whilee.test->pos, "test statement in while has to be evaluated as INT type");
+			}
+			if (bodyExp.ty->kind != Ty_void) {
+				EM_error (a->u.whilee.body->pos, "body statement in while has to be evaluated as VOID type");
+			}
+
+			return expTy (NULL, Ty_void ());
+		case A_forExp :
+			struct expty fromExp = transVar (venv, tenv, a->u.forr.lo);
+			struct expty toExp = transVar (venv, tenv, a->u.forr.hi);
+			struct expty bodyExp;
+
+			if (fromExp.ty->kind != Ty_int && toExp.ty->kind != Ty_int) {
+				EM_error (a->u.forr->pos, "for statement produces wrong type");
+			}
+
+			S_beginScope (venv);
+			S_enter (venv, a->u.forr.var, E_VarEntry (Ty_Int ()));
+			bodyExp = transVar (venv, tenv, a->u.forr.body);
+			S_endScope (venv);
+
+			if (bodyExp.ty->kind != Ty_void) {
+				EM_error (a->u.forr.body->pos, "for body statement must produce void type");
+			}
+
+			return expTy (NULL, Ty_Void ());	
+			break;
+		case A_breakExp :
+			return expTy (NULL, Ty_Void ());
+			break;
+		case A_arrayExp :
+			Ty_ty arrayTy = actual_ty (S_look (tenv, a->u.array.typ));
+			struct expTy sizeExp, initExp;
+
+			if (arrayTy == NULL) {
+				EM_error (a->u.pos, "array type have not been declared before");
+			}
+			if (arraTy->kind != Ty_array) {
+				EM_error (a->u.pos, "array type error");
+			}
+
+			sizeExp = transExp (venv, tenv, a->u.array.size);
+			initExp = transExp (venv, tenv, a->u.array.init);
+			if (sizeExp.ty->kind != Ty_int && initExp.ty->kind != Ty_int) {
+				EM_error (a->u.pos, "array expression has to produce INT type");
+			}
+
+			return expTy (NULL, arrayTy);
+			break;
 	}
 }
 
